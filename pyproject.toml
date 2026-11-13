@@ -1,6 +1,6 @@
 [project]
 name = "coding-client"
-version = "1.21.2"
+version = "1.21.3"
 description = "Shared library for coding-* microservices: models, auth, DB helpers, HTTP client"
 readme = "README.md"
 license = { text = "Apache-2.0" }
