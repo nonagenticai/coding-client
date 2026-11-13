@@ -48,7 +48,7 @@ dev = [
     "pytest-asyncio>=0.24.0",
     "pytest-cov>=6.0.0",
     "ruff==0.17.4",
-    "ty==0.0.39",
+    "ty==0.0.100",
 ]
 
 [build-system]
@@ -82,7 +82,7 @@ dev = [
     "ruff==0.17.4",
     "detect-secrets",
     "pip-audit>=2.10.0",
-    "ty==0.0.39",
+    "ty==0.0.100",
     # Test-only, deliberately NOT runtime deps: src/telemetry.py lazy-imports the
     # exporter and the FastAPI instrumentation and returns False when they are
     # absent, which is the supported configuration for a consumer that does not
