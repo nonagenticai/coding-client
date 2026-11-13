@@ -1,0 +1,24 @@
+name: CI
+
+# The public pipeline: nonagenticai/ci-workflows, on GitHub-hosted runners, with no repository
+# secrets. It runs ruff + ty + unit tests + uv build + bandit + pip-audit, plus a secret scan and
+# a private-infrastructure scan.
+#
+# While this repository was private it also ran the private gitops-production archetype; that job
+# is gone because GitHub resolves a called workflow even when the calling job's `if:` is false, so
+# a public repo cannot keep a private `uses:` in the file at all.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    uses: nonagenticai/ci-workflows/.github/workflows/python-library.yml@main
+    with:
+      src_dir: src

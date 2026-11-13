@@ -1,0 +1,128 @@
+[project]
+name = "coding-client"
+version = "1.21.2"
+description = "Shared library for coding-* microservices: models, auth, DB helpers, HTTP client"
+license = { text = "Apache-2.0" }
+authors = [{name = "Nonagentic", email = "dev@nonagentic.ai"}]
+requires-python = ">=3.14"
+dependencies = [
+    "fastapi>=0.115.0",
+    "starlette>=1.0.1",  # PYSEC-2026-161: pin transitive (via fastapi) above the vuln; propagates floor to consumers
+    "pydantic>=2.12.5",
+    "pydantic-settings>=2.12.0",
+    "sqlalchemy[asyncio]>=2.0",
+    "psycopg[binary,pool]>=3.2.0",
+    "httpx>=0.28.0",
+    "redis>=7.1.0",
+    "structlog>=24.4.0",
+    "PyJWT[crypto]>=2.15.1",
+    "cryptography>=46.0.6",
+    "opentelemetry-api>=1.45.1",  # CVE-2026-114603 fixed in 1.45.1
+    "opentelemetry-sdk>=1.24.0",
+    "tenacity>=8.2.0",
+    "aiofiles>=24.1.0",
+    "pyyaml>=6.0",
+    "cachetools>=5.3.0",
+    "pydantic-ai>=1.107.7,<2.0.0",  # CVE-2026-107287..107295 (fixed 1.107.7); earlier GHSA-cg7w-rg45-pc59 (fixed 1.102.0); stay on 1.x
+    # CEILING <3 (deferred, 2026-11-06): openai 3.x moved its transport to
+    # httpx2 and types AsyncOpenAI(http_client=...) as httpx2.AsyncClient.
+    # src/llm/base_agent.py passes the httpx 0.28 client built by
+    # _get_llm_http_client(), which reds `uv run ty check src`. Adapting means
+    # migrating this library's HTTP layer to httpx2 — a real refactor, not a
+    # bump. Raise the ceiling when that migration lands.
+    "openai>=1.0.0,<3",
+    # Security floor: pin pyasn1 ≥ 0.6.4 for PYSEC-2026-3455/3456/3457.
+    # Transitive (pyasn1-modules ← google-auth); floored here because the
+    # archetype's pip-audit gate is repo-scoped.
+    "pyasn1>=0.6.5",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "pytest-cov>=6.0.0",
+    "ruff==0.15.14",
+    "ty==0.0.39",
+]
+
+[build-system]
+requires = ["setuptools>=75.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.package-dir]
+coding_client = "src"
+
+[tool.setuptools]
+packages = [
+    "coding_client",
+    "coding_client.auth",
+    "coding_client.clients",
+    "coding_client.config",
+    "coding_client.db",
+    "coding_client.exceptions",
+    "coding_client.interfaces",
+    "coding_client.models",
+    "coding_client.types",
+    "coding_client.utils",
+    "coding_client.api",
+    "coding_client.llm",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "pytest-cov>=6.0.0",
+    "ruff==0.15.14",
+    "detect-secrets",
+    "pip-audit>=2.10.0",
+    "ty==0.0.39",
+    # Test-only, deliberately NOT runtime deps: src/telemetry.py lazy-imports the
+    # exporter and the FastAPI instrumentation and returns False when they are
+    # absent, which is the supported configuration for a consumer that does not
+    # want tracing. Every consumer that does want it already declares both. They
+    # are here so the tracing tests assert real exported spans rather than
+    # asserting that a mock was called.
+    "opentelemetry-exporter-otlp-proto-http>=1.24.0",
+    "opentelemetry-instrumentation-fastapi>=0.53b1",
+    "opentelemetry-instrumentation-httpx>=0.53b1",
+    # PYSEC-2026-3721: pip 26.1.2 is vulnerable (transitive via pip-audit -> pip-api -> pip); explicit floor so a re-lock cannot regress
+    "pip>=26.2",
+]
+
+[tool.uv]
+constraint-dependencies = [
+    # 2026-10-25 pip-audit: fastmcp GHSA-7xgj-8392-5q4r (fix 3.4.10), filelock
+    # CVE-2026-112907/112913/112940 (fix 4.2.1); both transitive, lock-only (not
+    # propagated to consumers). opentelemetry-api CVE-2026-114603 is floored above.
+    "fastmcp>=3.4.10",
+    "filelock>=4.2.1",
+    # otel-api 1.45.1 drags otel-semantic-conventions to ==0.66b1, which mistralai <=2.9.0
+    # caps at <0.61; left free, uv jumps mistralai 2->3. This library never imports
+    # mistralai (transitive via pydantic-ai); hold 2.x.
+    "mistralai<3",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"  # keep py313 so ruff format doesn't de-parenthesize PEP 758 except clauses
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+ignore = ["E501", "N815"]  # N815: camelCase Pydantic fields are API contracts
+
+[tool.ty.environment]
+python-version = "3.14"
+
+[tool.ty.rules]
+unresolved-import = "ignore"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+pythonpath = ["."]
+testpaths = ["tests"]
+addopts = "-v --cov=src --cov-report=term-missing -m 'not integration'"
+markers = [
+    "integration: marks tests as integration tests",
+]
