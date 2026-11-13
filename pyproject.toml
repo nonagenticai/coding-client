@@ -30,7 +30,7 @@ dependencies = [
     # _get_llm_http_client(), which reds `uv run ty check src`. Adapting means
     # migrating this library's HTTP layer to httpx2 — a real refactor, not a
     # bump. Raise the ceiling when that migration lands.
-    "openai>=1.0.0,<3",
+    "openai>=1.0.0,<4",
     # Security floor: pin pyasn1 ≥ 0.6.4 for PYSEC-2026-3455/3456/3457.
     # Transitive (pyasn1-modules ← google-auth); floored here because the
     # archetype's pip-audit gate is repo-scoped.
