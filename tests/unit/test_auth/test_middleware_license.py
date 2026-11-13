@@ -894,7 +894,7 @@ class TestFailedIntrospectionsAreNegativeCached:
     code and it DOCUMENTED an amplification: ``tenant.py`` cached only when
     ``data.get("active")``, so every failed introspection was a fresh POST — and
     a fresh ``httpx.AsyncClient``, therefore a fresh TCP connection — to
-    ``licenses.licenses.svc.cluster.local:8544``, which ``licenses/main.py:820``
+    ``licenses:8544``, which ``licenses/main.py:820``
     calls "the fleet's hottest auth path". Before ``_user_from_license`` existed
     a garbage Bearer cost zero outbound calls, because nothing read the header.
     Adding the license path turned any unauthenticated caller that can reach a

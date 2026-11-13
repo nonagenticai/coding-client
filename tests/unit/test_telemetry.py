@@ -21,7 +21,7 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanE
 
 from src.telemetry import DEFAULT_EXCLUDED_URLS, _strip_query, setup_tracing
 
-ENDPOINT = "http://tempo.tempo.svc.cluster.local:4318/v1/traces"
+ENDPOINT = "http://localhost:4318/v1/traces"
 
 #: Captured before any test patches it. The ``collector`` fixture replaces
 #: ``TracerProvider.add_span_processor`` class-wide, so a test that needs to build
