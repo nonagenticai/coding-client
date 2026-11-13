@@ -85,7 +85,7 @@ TENANT_ID_HEADER = "X-Tenant-Id"
 # `_introspect_license` used to cache only when `data.get("active")`, so every
 # refusal — revoked license, unknown token, licenses service down — was a fresh
 # POST, and a fresh `httpx.AsyncClient`, therefore a fresh TCP connection, to
-# `licenses.licenses.svc.cluster.local:8544`. `licenses/main.py:820-827` calls
+# `licenses:8544`. `licenses/main.py:820-827` calls
 # that "the fleet's hottest auth path".
 #
 # That was harmless while nothing read the Authorization header. Once

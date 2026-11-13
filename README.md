@@ -1,5 +1,9 @@
 # coding-client
 
+[![CI](https://github.com/nonagenticai/coding-client/actions/workflows/ci.yml/badge.svg)](https://github.com/nonagenticai/coding-client/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/nonagenticai/coding-client)](https://github.com/nonagenticai/coding-client/releases)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+
 Shared Python library for the coding-* microservices ecosystem — models, auth, database, service clients, and utilities.
 
 | | |
@@ -173,3 +177,19 @@ consumers pin the git commit.
 | **Observability** | structlog, opentelemetry-api, opentelemetry-sdk |
 | **Security** | cryptography |
 | **Utilities** | uuid-v7, cachetools, pyyaml |
+
+## Security
+
+Report vulnerabilities privately through the repository's Security tab — see
+[`SECURITY.md`](SECURITY.md). Do not open a public issue for a security problem.
+
+## Contributing
+
+Issues and pull requests are welcome. See
+[`CONTRIBUTING.md`](https://github.com/nonagenticai/.github/blob/main/CONTRIBUTING.md) for the
+organisation-wide rules; setup, test and lint commands are in this README. Commits carry DCO
+sign-off.
+
+## License
+
+Apache-2.0 — see [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE).
