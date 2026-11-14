@@ -10,7 +10,7 @@ import asyncio
 import os
 import shutil
 import tempfile
-from collections.abc import AsyncIterator, Iterator
+from collections.abc import AsyncGenerator, Generator
 from contextlib import asynccontextmanager, contextmanager
 from datetime import datetime
 from pathlib import Path
@@ -150,7 +150,7 @@ def temp_file(
     prefix: str = TEMP_DIR_PREFIX,
     dir: str | Path | None = None,
     delete: bool = True,
-) -> Iterator[Path]:
+) -> Generator[Path]:
     """Context manager for temporary file."""
     try:
         fd, temp_path = tempfile.mkstemp(suffix=suffix, prefix=prefix, dir=dir)
@@ -175,7 +175,7 @@ def temp_directory(
     prefix: str = TEMP_DIR_PREFIX,
     dir: str | Path | None = None,
     delete: bool = True,
-) -> Iterator[Path]:
+) -> Generator[Path]:
     """Context manager for temporary directory."""
     try:
         temp_dir = tempfile.mkdtemp(suffix=suffix, prefix=prefix, dir=dir)
@@ -198,7 +198,7 @@ def atomic_write(
     file_path: str | Path,
     encoding: str = DEFAULT_ENCODING,
     mode: str = "w",
-) -> Iterator[Any]:
+) -> Generator[Any]:
     """Context manager for atomic file writing."""
     path = Path(file_path)
     temp_path = path.with_suffix(path.suffix + ".tmp")
@@ -224,7 +224,7 @@ async def async_atomic_write(
     file_path: str | Path,
     encoding: str = DEFAULT_ENCODING,
     mode: str = "w",
-) -> AsyncIterator[Any]:
+) -> AsyncGenerator[Any]:
     """Async context manager for atomic file writing."""
     if not HAS_AIOFILES:
         raise ImportError("aiofiles module not available - install with 'pip install aiofiles'")
@@ -249,7 +249,7 @@ async def async_atomic_write(
 
 
 @contextmanager
-def preserve_permissions(file_path: str | Path) -> Iterator[None]:
+def preserve_permissions(file_path: str | Path) -> Generator[None]:
     """Context manager to preserve file permissions during operations."""
     path = Path(file_path)
     original_stat = None

@@ -17,7 +17,7 @@ from contextvars import ContextVar
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Generator
 
     import httpx2 as httpx  # the LLM plane's client — see base_agent.py
 
@@ -39,7 +39,7 @@ def llm_request_context(
     job_id: str | None = None,
     license_id: str | None = None,
     schema_id: str | None = None,
-) -> Iterator[None]:
+) -> Generator[None]:
     """Attach request-scoped routing headers for downstream LLM calls.
 
     Usage::
