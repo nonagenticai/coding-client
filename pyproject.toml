@@ -121,7 +121,7 @@ ignore = ["E501", "N815"]  # N815: camelCase Pydantic fields are API contracts
 python-version = "3.14"
 
 [tool.ty.rules]
-unresolved-import = "ignore"
+import-not-found = "ignore"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

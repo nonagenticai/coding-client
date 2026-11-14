@@ -60,7 +60,7 @@ clearing would silently drop overrides the caller installed itself.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from typing import Any
 
@@ -167,7 +167,7 @@ def tenant_auth_override(
     tenant_id: str = DEFAULT_TEST_TENANT,
     user: User | None = None,
     extra: dict[Callable[..., Any], Callable[..., Any]] | None = None,
-) -> Iterator[None]:
+) -> Generator[None]:
     """Context-manager form of :func:`override_tenant_auth`.
 
     Restores on the way out even when the body raises — which a bare

@@ -895,7 +895,9 @@ class BaseRepository[ModelType]:
 class SyncRepository(BaseRepository[ModelType]):
     """Base class for synchronous repositories."""
 
-    db: SyncDatabaseOperations[ModelType]
+    # No `db` redeclaration: narrowing the base's `Sync | Async` union to one arm is an
+    # unsound mutable override (a caller holding a BaseRepository could assign the other
+    # type). The runtime guarantee is unchanged — __init__ assigns the sync operations.
 
     def __init__(self, model: type[ModelType], session: Session):
         """Initialize sync repository."""
@@ -907,7 +909,7 @@ class SyncRepository(BaseRepository[ModelType]):
 class AsyncRepository(BaseRepository[ModelType]):
     """Base class for asynchronous repositories."""
 
-    db: AsyncDatabaseOperations[ModelType]
+    # See SyncRepository: the narrowing is removed, the assignment is unchanged.
 
     def __init__(self, model: type[ModelType], session: AsyncSession):
         """Initialize async repository."""
