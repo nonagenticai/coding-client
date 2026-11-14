@@ -1,6 +1,6 @@
 [project]
 name = "coding-client"
-version = "1.21.3"
+version = "1.22.0"
 description = "Shared library for coding-* microservices: models, auth, DB helpers, HTTP client"
 readme = "README.md"
 license = { text = "Apache-2.0" }
@@ -24,14 +24,14 @@ dependencies = [
     "aiofiles>=24.1.0",
     "pyyaml>=6.0",
     "cachetools>=5.3.0",
-    "pydantic-ai>=1.107.7,<2.0.0",  # CVE-2026-107287..107295 (fixed 1.107.7); earlier GHSA-cg7w-rg45-pc59 (fixed 1.102.0); stay on 1.x
-    # CEILING <3 (deferred, 2026-11-06): openai 3.x moved its transport to
-    # httpx2 and types AsyncOpenAI(http_client=...) as httpx2.AsyncClient.
-    # src/llm/base_agent.py passes the httpx 0.28 client built by
-    # _get_llm_http_client(), which reds `uv run ty check src`. Adapting means
-    # migrating this library's HTTP layer to httpx2 — a real refactor, not a
-    # bump. Raise the ceiling when that migration lands.
-    "openai>=1.0.0,<3",
+    # pydantic-ai 2 and openai 3 move together: pydantic-ai-slim[openai] 2.x requires
+    # openai>=3.31, and openai 3 moved its transport to httpx2. The deferred `<3` /
+    # `<2.0.0` ceilings (2026-11-06) are lifted — the migration they were waiting on is
+    # src/llm/{base_agent,context}.py, which now build the LLM client on httpx2. The rest
+    # of the library keeps httpx 0.28: separate package, separate signatures, no overlap.
+    "pydantic-ai>=2.68.0,<3.0.0",
+    "openai>=3.31.0,<4",
+    "httpx2>=2.16.0",
     # Security floor: pin pyasn1 ≥ 0.6.4 for PYSEC-2026-3455/3456/3457.
     # Transitive (pyasn1-modules ← google-auth); floored here because the
     # archetype's pip-audit gate is repo-scoped.
