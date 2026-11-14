@@ -15,6 +15,13 @@ All notable changes to this project are documented here. The format follows
 
 ### Changed
 
+- **LLM plane moved to pydantic-ai 2.68 / openai 3.51**, which ended the dependency deadlock
+  that made the scheduled Dependabot update job fail on every consumer for days. The two
+  releases move together: `pydantic-ai-slim[openai]` 2.x requires `openai>=3.31`.
+- `src/llm/{base_agent,context}.py` now build the shared client on **httpx2**, because openai 3
+  types `AsyncOpenAI(http_client=...)` as `httpx2.AsyncClient`. The rest of the library keeps
+  httpx 0.28 — separate packages, separate signatures, no overlap. The previously deferred
+  `openai<3` ceiling (2026-11-06) is gone.
 - `pyproject.toml`: publish metadata — `readme` (the PyPI project page now renders the README)
   and `[project.urls]`.
 

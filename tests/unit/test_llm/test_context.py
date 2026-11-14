@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import httpx
+import httpx2 as httpx  # the LLM plane's client — see coding_client/llm/base_agent.py
 import pytest
 from coding_client.llm.context import (
     apply_request_headers,

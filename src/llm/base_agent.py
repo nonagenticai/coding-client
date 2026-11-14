@@ -21,7 +21,11 @@ from abc import ABC, abstractmethod
 from contextvars import ContextVar
 from typing import Any, ClassVar
 
-import httpx
+# The LLM plane runs on httpx2, not httpx 0.28: openai 3 types
+# `AsyncOpenAI(http_client=...)` as `httpx2.AsyncClient`, and pydantic-ai 2 depends on
+# httpx2>=2.7 (pydantic-ai-slim). The rest of this library keeps httpx 0.28 — the two are
+# separate packages and neither leaks into the other's signatures.
+import httpx2 as httpx
 from coding_client.exceptions.pydantic_ai_exceptions import LLMEmptyResponseError
 from coding_client.llm.context import (
     apply_request_headers,

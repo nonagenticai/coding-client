@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
-    import httpx
+    import httpx2 as httpx  # the LLM plane's client — see base_agent.py
 
 
 _llm_request_context: ContextVar[dict[str, str]] = ContextVar(
