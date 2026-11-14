@@ -29,9 +29,20 @@ jobs:
       contents: read
       id-token: write      # the OIDC token PyPI exchanges for a short-lived upload credential
     steps:
-      - uses: actions/checkout@v7
+      # Pins are commit SHAs with the version in a trailing comment: a moving tag (or, worse,
+      # a moving BRANCH) is code from outside this repository that runs with `id-token: write`,
+      # and this job's OIDC token is what authorises a PyPI upload. Dependabot's
+      # github-actions ecosystem updates the SHA and the comment together.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
 
-      - uses: astral-sh/setup-uv@v6
+      # enable-cache:false — a publish job must not consume a cache that a PR run can write:
+      # a poisoned uv cache would end up inside the wheel uploaded to PyPI (zizmor
+      # cache-poisoning). Nothing here needs the cache.
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          enable-cache: false
 
       # The project requires >=3.14; install one explicitly so the build never depends on what
       # the runner image happens to ship.
@@ -71,7 +82,9 @@ jobs:
 
       - name: upload
         if: steps.probe.outputs.exists == 'false'
-        uses: pypa/gh-action-pypi-publish@release/v1
+        # Was @release/v1 — a BRANCH. Pinned to the v1.14.3 release commit instead, so what we
+        # audit is what runs; Dependabot keeps the pin current.
+        uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3
         with:
           packages-dir: dist/
           skip-existing: true
