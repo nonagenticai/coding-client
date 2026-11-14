@@ -21,7 +21,7 @@ This module provides:
 from __future__ import annotations
 
 import logging
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 import psycopg
@@ -121,7 +121,7 @@ async def close_postgres_pool():
 
 
 @asynccontextmanager
-async def get_postgres_connection() -> AsyncIterator[psycopg.AsyncConnection]:
+async def get_postgres_connection() -> AsyncGenerator[psycopg.AsyncConnection]:
     """
     Context manager for creating a PostgreSQL connection through PgBouncer.
 
@@ -186,7 +186,7 @@ async def get_postgres_connection() -> AsyncIterator[psycopg.AsyncConnection]:
 
 
 @asynccontextmanager
-async def postgres_transaction() -> AsyncIterator[psycopg.AsyncConnection]:
+async def postgres_transaction() -> AsyncGenerator[psycopg.AsyncConnection]:
     """
     Context manager for PostgreSQL transactions.
 
