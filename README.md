@@ -4,31 +4,63 @@
 [![Release](https://img.shields.io/github/v/release/nonagenticai/coding-client)](https://github.com/nonagenticai/coding-client/releases)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
-Shared Python library for the coding-* microservices ecosystem — models, auth, database, service clients, and utilities.
+Shared Python library for the coding-* microservices ecosystem — Pydantic models, authentication
+and tenant helpers, PostgreSQL access, typed service-to-service clients, an LLM agent base, and
+test-side auth overrides. It is imported by services; it runs no process of its own.
 
 | | |
 |---|---|
-| **Stack** | Python 3.14 · Pydantic 2.x · SQLAlchemy 2.x · psycopg 3.x · httpx · structlog |
-| **Package** | `coding-client` (Apache-2.0) |
-| **Used by** | coding-gateway, coding-analysis, coding-testing, coding-ai, coding-containers, coding-github, coding-security, coding-realtime |
+| **Runtime** | Python 3.14 (`>=3.14,<3.15`) |
+| **Depends on** | PostgreSQL 18 through PgBouncer, only when a consumer uses `coding_client.db_init` or `coding_client.db`; an OpenAI-compatible endpoint, only when it uses `coding_client.llm` |
+| **Runs on** | Inside a consumer's FastAPI/Starlette process, or any Python 3.14 process |
+| **Package** | `coding-client` (Apache-2.0), consumed as a pinned git dependency |
 
 ## What It Provides
 
-**Models** (`coding_client.models`) — 23 domain-specific Pydantic models covering code graphs, architecture, analysis, testing, containers, GitHub, security, AI agents, bug tracking, package management, PR validation, and more.
+**Models** (`coding_client.models`) — 23 model modules covering code graphs, architecture,
+analysis, testing, containers, GitHub, security, AI agents, bug tracking, package management,
+PR validation, and more.
 
-**Auth** (`coding_client.auth`) — Istio header-based authentication middleware, RBAC helpers (`require_role`, `require_access_coding`), multi-tenant isolation (`TenantMiddleware`, `require_tenant`, `get_tenant_id`), and FastAPI dependencies (`get_current_user`).
+**Auth** (`coding_client.auth`) — `AuthMiddleware` for Istio/header-based authentication, RBAC
+helpers (`require_role`, `require_access_coding`), multi-tenant resolution
+(`TenantMiddleware`, `require_tenant`, `get_tenant_id`, `get_current_user_with_tenant`),
+header-trust posture (`trust_tenant_header`), on-behalf-of vouching, outbound identity headers,
+WebSocket identity resolution, and the FastAPI dependency `get_current_user`.
 
-**Database** (`coding_client.db`) — PostgreSQL connection management via PgBouncer, SQLite code graph database, transaction management (`TransactionManager`, `TransactionContext`), tenant-aware queries (`TenantQueryBuilder`), migrations, and 9 custom exceptions.
+**Database** (`coding_client.db`) — PostgreSQL connection management designed for PgBouncer,
+tenant-aware query building (`TenantQueryBuilder`), database type aliases, and 9 custom
+exceptions. There is no SQLite database in this package: the only `sqlite3` reference is
+`sqlite3.OperationalError` in the retry helper's legacy exception list.
 
-**Clients** (`coding_client.clients`) — service-to-service HTTP clients with retry and timeout, including the canonical `CodingWorkspacesClient` and the compatibility-only `CodingContainersClient`. All extend a common `ServiceClient` base.
+**Clients** (`coding_client.clients`) — typed HTTP service clients with retry and timeout,
+including the canonical `CodingWorkspacesClient` and the compatibility-only
+`CodingContainersClient`. All extend `ServiceClient`.
 
-**Utilities** (`coding_client.utils`) — 16 modules: file operations, filesystem ops, path utils, archive utils, async timeout, encoding helper, HTTP client, retry helper, profiling, response builder, content processing, database utils, constants, enum helpers, security validation, AST debug.
+**Utilities** (`coding_client.utils`) — 16 modules: file operations, filesystem ops, path
+utils, archive utils, async timeout, encoding helper, HTTP client, retry helper, profiling,
+response builder, content processing, database utils, constants, enum helpers, security
+validation, and AST debug.
 
-**Interfaces** (`coding_client.interfaces`) — 6 abstract contracts for dependency injection: `IGraphService`, `IDockerService`, `ISecurityService`, `IAnalysisCache`, `ICacheManager`, `IWebhookEventHandler`.
+**Interfaces** (`coding_client.interfaces`) — 7 abstract contracts for dependency injection:
+`IGraphService`, `IDockerService`, `ISecurityService`, `IAnalysisCache`, `ICacheManager`,
+`IWebhookEventHandler`, and `IContainerManager`, plus the `ContainerInfo` protocol.
 
-**Types** (`coding_client.types`) — Shared type definitions, enums, constraint types, and workflow state machine definitions.
+**LLM** (`coding_client.llm`) — `BaseLLMAgent` over pydantic-ai, `LLMSettings`, request-scoped
+identity headers (`llm_request_context`), an agent routing registry, and typed response models.
 
-**API** (`coding_client.api`) — FastAPI middleware (`RequestLoggingMiddleware`, `HealthCheckFilter`), exception handlers, and OpenAPI configuration helpers.
+**Testing** (`coding_client.testing`) — `override_tenant_auth` / `tenant_auth_override`, the
+supported replacement for the removed `SKIP_AUTH` environment switch.
+
+**Types** (`coding_client.types`) — shared type definitions, enums, constraint types, and
+workflow state machine definitions.
+
+**API** (`coding_client.api`) — FastAPI exception handlers, OpenAPI configuration, request
+logging (`RequestLoggingMiddleware`, `HealthCheckFilter`), logging setup, process-time metrics,
+and a validation middleware/exception.
+
+**Top-level modules** — `coding_client.telemetry` (OpenTelemetry trace setup),
+`coding_client.db_init` (opt-in SQLAlchemy async engine/session; no default DSN), and
+`coding_client.models_init` (SQLAlchemy ORM models for the code-graph schema).
 
 ## Installation
 
@@ -53,59 +85,122 @@ Docker build.
 ## Quick Start
 
 ```bash
+git clone https://github.com/nonagenticai/coding-client.git
+cd coding-client
 uv sync
-uv run pytest tests/ -v --cov=src
-uv run ruff check src/ tests/ && uv run ruff format --check src/ tests/
-uv run ty check .
+uv run python -c "import coding_client; print(coding_client.__name__)"
 ```
+
+## Usage
+
+Use an auth dependency in a FastAPI route:
+
+```python
+from fastapi import Depends, FastAPI
+
+from coding_client.auth import require_tenant
+
+app = FastAPI()
+
+
+@app.get("/items")
+async def items(tenant_id: str = Depends(require_tenant)) -> dict[str, str]:
+    return {"tenant": tenant_id}
+```
+
+Call another coding-* service:
+
+```python
+from coding_client.clients import CodingWorkspacesClient
+
+client = CodingWorkspacesClient(base_url="http://coding-containers:8080")
+workspaces = await client.list_workspaces(headers={"X-Tenant-Id": "..."})
+```
+
+Each client also reads its service URL from the environment when `base_url` is omitted; it
+raises `RuntimeError` if neither is available.
+
+## Configuration
+
+Every setting is read by the module that needs it; importing the library requires no
+configuration. The settings a consumer is most likely to set:
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `DATABASE_URL` | none | Read by `coding_client.db_init`; importing it without this (or `TEST_DATABASE_URL`) raises `RuntimeError` naming the variable. PostgreSQL only. |
+| `TEST_DATABASE_URL` | none | Test-only fallback for `coding_client.db_init`. |
+| `TRUST_TENANT_HEADER` | `true` | Whether client-supplied `X-Tenant-Id` / `X-User-Id` / `X-User-Roles` headers are believed. The default preserves existing deployments; set `false` once the service has a verifiable alternative. |
+| `TRUSTED_CIDRS` | empty | CIDRs whose credential-less requests may use the network bypass. Empty by default. |
+| `DEFAULT_TENANT_ID` | none | Fallback tenant for credential-less callers. There is deliberately no literal default: unset means such callers are rejected. |
+| `LICENSE_INTROSPECT_URL` | empty | Licence introspection endpoint. Unset skips introspection; a presented licence token is then rejected. |
+| `CODING_ONBEHALF_SUBJECTS` | empty | Comma-separated subjects allowed to vouch for other subjects. |
+| `DEV_API_KEY` | empty | Development/testing API key; only honoured when `ENVIRONMENT` is `development` or `testing`. |
+| `ENVIRONMENT` | `production` | Enables the production-only required-settings and bypass checks. |
+| `OTEL_SDK_DISABLED` | `false` | Set `true` to disable OpenTelemetry setup. |
+| `OTLP_TRACES_ENDPOINT` | empty | OTLP/HTTP trace exporter endpoint; no exporter without it. |
+| `LLM_API_BASE_URL` | empty | OpenAI-compatible endpoint for `coding_client.llm`. |
+| `LLM_API_KEY` | empty | Credential for that endpoint; must be non-empty for the SDK. |
+| `LLM_MODE` | `inference_router` | `inference_router` (provider chain) or `direct`. |
+| `CODING_<SERVICE>_URL` | empty | Per-client base URL, e.g. `CODING_AI_URL`, `CODING_ANALYSIS_URL`, `CODING_CONTAINERS_URL` (also used by `CodingWorkspacesClient`), `CODING_GITHUB_URL`, `CODING_REALTIME_URL`, `CODING_SECURITY_URL`, `CODING_TESTING_URL`. |
 
 ## Architecture
 
 ```
 src/
 ├── __init__.py
+├── db_init.py                      # opt-in SQLAlchemy async engine/session (no default DSN)
+├── models_init.py                  # SQLAlchemy ORM models for the code-graph schema
+├── telemetry.py                    # OpenTelemetry trace setup
+├── testing.py                      # override_tenant_auth / tenant_auth_override
 ├── api/
 │   ├── exception_handlers.py       # FastAPI exception handlers
+│   ├── logging_setup.py            # Logging configuration
+│   ├── metrics.py                  # Process-time header
 │   ├── openapi_config.py           # OpenAPI customization
-│   └── request_logging.py          # Request logging middleware
+│   ├── request_logging.py          # Request logging middleware
+│   └── validation.py               # Validation middleware and exception
 ├── auth/
+│   ├── _default_tenant.py          # Fallback tenant resolution (no literal default)
+│   ├── _header_trust.py            # TRUST_TENANT_HEADER posture
+│   ├── _onbehalf.py                # On-behalf-of vouching
+│   ├── _trusted_networks.py        # TRUSTED_CIDRS network bypass
 │   ├── dependencies.py             # FastAPI auth dependencies (get_current_user)
-│   ├── middleware.py                # Istio header auth middleware
+│   ├── middleware.py               # Auth middleware
 │   ├── models.py                   # User model
+│   ├── outbound.py                 # Outbound identity headers
 │   ├── rbac.py                     # Role-based access control
 │   ├── rbac_coding.py              # Coding-specific RBAC helpers
-│   └── tenant.py                   # Multi-tenant isolation
+│   ├── tenant.py                   # Multi-tenant isolation and licence introspection
+│   └── websocket.py                # WebSocket identity resolution
 ├── clients/
 │   ├── base.py                     # ServiceClient base with retry/timeout
 │   ├── coding_ai.py                # coding-ai client
 │   ├── coding_analysis.py          # coding-analysis client
 │   ├── coding_containers.py        # coding-containers client
-│   ├── coding_workspaces.py        # canonical repository-workspace client
 │   ├── coding_github.py            # coding-github client
 │   ├── coding_realtime.py          # coding-realtime client
 │   ├── coding_security.py          # coding-security client
-│   └── coding_testing.py           # coding-testing client
+│   ├── coding_testing.py           # coding-testing client
+│   └── coding_workspaces.py        # canonical repository-workspace client
 ├── config/
+│   ├── base_settings.py            # Production required-settings enforcement
 │   └── yaml_config_loader.py       # YAML config loading
 ├── db/
-│   ├── code_graph_database.py      # SQLite graph DB
-│   ├── database_path_manager.py    # DB file path management
 │   ├── db_types.py                 # Database type definitions
 │   ├── exceptions.py               # 9 custom DB exceptions
-│   ├── migrations.py               # Schema migration helpers
-│   ├── models/
-│   │   └── architecture.py         # ORM models
-│   ├── performance_optimizer.py    # Query performance tuning
-│   ├── postgres_connection.py      # PostgreSQL via PgBouncer
-│   ├── tenant_query_helper.py      # Tenant-aware query builder
-│   ├── transaction_manager.py      # Transaction management
-│   ├── transaction_mixin.py        # Transaction mixin
-│   └── transaction_patterns.py     # Transaction patterns
+│   ├── postgres_connection.py      # PostgreSQL connection management (PgBouncer)
+│   └── tenant_query_helper.py      # Tenant-aware query builder
 ├── exceptions/
 │   ├── api_exceptions.py           # API exception hierarchy
 │   └── pydantic_ai_exceptions.py   # PydanticAI-specific exceptions
-├── interfaces/                     # 6 abstract contracts
-├── models/                         # 23 Pydantic model files
+├── interfaces/                     # 7 abstract contracts + ContainerInfo protocol
+├── llm/
+│   ├── base_agent.py               # BaseLLMAgent over pydantic-ai
+│   ├── context.py                  # Request-scoped identity headers
+│   ├── responses.py                # Typed LLM response models
+│   ├── routing.py                  # Agent routing registry
+│   └── settings.py                 # LLMSettings
+├── models/                         # 23 Pydantic model modules
 ├── types/
 │   ├── constraint_types.py         # Validation constraints
 │   ├── core_types.py               # Enums and type hints
@@ -113,16 +208,21 @@ src/
 └── utils/                          # 16 utility modules
 ```
 
-## Tests
+## Development
 
 ```bash
-uv run pytest tests/ -v --cov=src --cov-report=term-missing    # 29 test files
+uv sync
+uv run pytest tests/ -v --cov=src --cov-report=term-missing    # 44 test modules
 uv run ruff check src/ tests/                                   # Lint
 uv run ruff format --check src/ tests/                          # Format check
 uv run ty check .                                               # Type check
+uv build                                                        # Wheel + sdist
 ```
 
-Test structure mirrors source: `test_api/`, `test_auth/`, `test_clients/`, `test_config/`, `test_db/`, `test_exceptions/`, `test_models/`, `test_types/`, `test_utils/`.
+Test structure mirrors source: `tests/unit/test_api/`, `test_auth/`, `test_clients/`,
+`test_config/`, `test_db/`, `test_exceptions/`, `test_interfaces/`, `test_llm/`, `test_models/`,
+`test_types/`, `test_utils/`, plus top-level tests for `db_init`, `telemetry`, and the testing
+helper.
 
 The suite needs no database. ⛔ `coding_client.db_init` has **no default DSN** (it used to
 fall back to `localhost:5432/code_graph_helper`, a host Postgres deleted 2026-10-21):
@@ -170,18 +270,19 @@ consumers pin the git commit.
 
 | Category | Packages |
 |----------|----------|
-| **Web/API** | fastapi, httpx, PyJWT[crypto] |
+| **Web/API** | fastapi, starlette, httpx, PyJWT[crypto] |
 | **Data** | pydantic, pydantic-settings, sqlalchemy[asyncio] |
-| **Database** | psycopg[binary,pool] (PostgreSQL v3.x), aiosqlite |
+| **Database** | psycopg[binary,pool] (PostgreSQL v3) |
 | **Async** | redis, tenacity, aiofiles |
+| **LLM** | pydantic-ai-slim[openai], openai, httpx2 |
 | **Observability** | structlog, opentelemetry-api, opentelemetry-sdk |
-| **Security** | cryptography |
-| **Utilities** | uuid-v7, cachetools, pyyaml |
+| **Security** | cryptography, pyasn1 |
+| **Utilities** | cachetools, pyyaml |
 
 ## Security
 
-Report vulnerabilities privately through the repository's Security tab — see
-[`SECURITY.md`](SECURITY.md). Do not open a public issue for a security problem.
+Report vulnerabilities privately through the repository's Security tab. Do not open a public
+issue for a security problem.
 
 ## Contributing
 
@@ -190,20 +291,6 @@ Issues and pull requests are welcome. See
 organisation-wide rules; setup, test and lint commands are in this README. Commits carry DCO
 sign-off.
 
-## Licensing
-
-The code in this repository is Apache-2.0 and needs no licence key to build, test or run.
-Licence tokens are an **optional** identity source: with `LICENSE_INTROSPECT_URL` unset (the
-default), a `Bearer` licence cannot be introspected, and callers authenticate through the
-platform's mesh-forwarded identity instead. With the URL set, every licence token is
-introspected against the licences service, and an unreachable service yields no identity
-(401) — never an admission.
-
-The licensing stack is public too — [`licenses`](https://github.com/nonagenticai/licenses)
-(entitlements, plans and tokens) and
-[`license-authz`](https://github.com/nonagenticai/license-authz) (the Envoy `ext_authz`
-enforcement point). Neither is required to run this code.
-
 ## License
 
-Apache-2.0 — see [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE).
+Apache-2.0 — see [`LICENSE`](LICENSE).
