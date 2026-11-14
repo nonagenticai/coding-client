@@ -1,5 +1,11 @@
 version: 2
 
+# Re-validated 2026-11-14 (second pass): the umbrella pydantic-ai was replaced by
+# pydantic-ai-slim[openai] — the umbrella's google extra pins tenacity<9.2.0 against this
+# library's 9.2.1 lock — and requires-python is now bounded. GitHub only recomputes a
+# Dependabot update job on a dependabot.yml change or its weekly schedule, so this touch is
+# what makes the record reflect the fixed graph.
+
 # Re-validated 2026-11-14: the pydantic-ai/openai ceilings that made every proposed
 # upgrade unsatisfiable were lifted, and coding-client is consumed from git at an exact rev.
 # GitHub only recomputes a Dependabot update job on a dependabot.yml change or its weekly
